@@ -117,17 +117,27 @@
       command: >
         certbot --nginx -d {{ domain }} 
         --non-interactive --agree-tos --email {{ email }}
-        --redirect
+        --redirect --force-renewal
       when: not main_cert.stat.exists
       register: main_cert_result
+      ignore_errors: yes
 
     - name: Obtain SSL certificate for API subdomain
       command: >
         certbot --nginx -d {{ api_domain }} 
         --non-interactive --agree-tos --email {{ email }}
-        --redirect
+        --redirect --force-renewal
       when: not api_cert.stat.exists
       register: api_cert_result
+      ignore_errors: yes
+
+    - name: Display SSL certificate results
+      debug:
+        msg: |
+          Main domain SSL: {{ main_cert_result.rc | default('skipped') }}
+          API domain SSL: {{ api_cert_result.rc | default('skipped') }}
+          Note: If SSL setup failed, domains may not be pointing to this server yet.
+          You can run 'sudo certbot --nginx -d {{ domain }} -d {{ api_domain }}' manually later.
 
     - name: Setup automatic certificate renewal
       cron:
