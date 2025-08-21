@@ -1,0 +1,17 @@
+---
+# Configuration file for nginx-ansible setup
+# Edit these values according to your needs
+
+# Email configuration for Let's Encrypt SSL certificates
+default_email: "admin@amisgmbh.com"
+
+# Domain configuration
+main_domain: "amisgmbh.com"
+api_domain: "api.amisgmbh.com"
+
+# Application ports
+frontend_port: 6062
+backend_port: 6061
+
+# Server configuration
+server_name: "localhost"

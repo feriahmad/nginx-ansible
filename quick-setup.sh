@@ -1,17 +1,17 @@
 #!/bin/bash
 
-# Nginx Setup Script with SSL
-# This script runs the Ansible playbook to setup nginx with SSL
+# Quick Nginx Setup Script with SSL (No Prompts)
+# This script runs the Ansible playbook using default configuration
 
 set -e
 
-echo "=== Nginx Setup with SSL and Subdomain Configuration ==="
+echo "=== Quick Nginx Setup (Using Default Configuration) ==="
 echo ""
 
 # Check if running as root or with sudo
 if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root or with sudo privileges"
-   echo "Usage: sudo ./run-playbook.sh"
+   echo "Usage: sudo ./quick-setup.sh"
    exit 1
 fi
 
@@ -44,38 +44,20 @@ else
     DEFAULT_EMAIL="admin@amisgmbh.com"
 fi
 
-# Set email (use environment variable, prompt, or default)
-if [[ -z "$EMAIL" ]]; then
-    echo "Default email for Let's Encrypt certificates: $DEFAULT_EMAIL"
-    read -p "Press Enter to use default email, or type a different email: " CUSTOM_EMAIL
-    
-    if [[ -n "$CUSTOM_EMAIL" ]]; then
-        EMAIL="$CUSTOM_EMAIL"
-    else
-        EMAIL="$DEFAULT_EMAIL"
-    fi
-    export EMAIL
-fi
-
-echo "Using email: $EMAIL"
-
-# Check if domains are accessible (optional warning)
-echo "WARNING: Make sure the following domains point to this server:"
-echo "  - amisgmbh.com"
-echo "  - api.amisgmbh.com"
-echo ""
-echo "If domains are not properly configured, SSL certificate generation will fail."
+# Use default email without prompting
+EMAIL="$DEFAULT_EMAIL"
+echo "Using default email: $EMAIL"
 echo ""
 
-read -p "Do you want to continue? (y/N): " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "Aborted."
-    exit 1
-fi
+# Show configuration
+echo "Configuration:"
+echo "  - Frontend: amisgmbh.com -> localhost:6062"
+echo "  - Backend API: api.amisgmbh.com -> localhost:6061"
+echo "  - SSL Email: $EMAIL"
+echo ""
 
-# Run the playbook
-echo "Running Ansible playbook..."
+# Run the playbook immediately
+echo "Running Ansible playbook with default configuration..."
 ansible-playbook nginx-setup.yml -i inventory.ini --extra-vars "email_address=$EMAIL"
 
 echo ""
@@ -86,9 +68,12 @@ echo "  - Frontend (amisgmbh.com) -> localhost:6062"
 echo "  - Backend API (api.amisgmbh.com) -> localhost:6061"
 echo "  - SSL certificates automatically managed by Let's Encrypt"
 echo "  - Automatic HTTP to HTTPS redirect"
+echo "  - CORS properly configured for API access"
 echo ""
 echo "Make sure your applications are running on:"
 echo "  - Frontend: localhost:6062"
 echo "  - Backend: localhost:6061"
 echo ""
 echo "SSL certificates will auto-renew via cron job."
+echo ""
+echo "To change default email, edit config.yml file."

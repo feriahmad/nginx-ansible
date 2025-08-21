@@ -7,7 +7,7 @@
     api_domain: "api.amisgmbh.com"
     fe_port: 6062
     be_port: 6061
-    email: "admin@amisgmbh.com"  # Change this to your email
+    email: "{{ email_address | default('admin@amisgmbh.com') }}"  # Default email, can be overridden
     
   tasks:
     - name: Update package cache (Ubuntu 20.04)

@@ -44,20 +44,29 @@ nginx-ansible/
 
 ## Quick Start
 
-1. **Clone or download this repository**
-2. **Update email in playbook** (optional):
+### Option 1: Quick Setup (Recommended)
+Uses default email configuration without prompts:
+```bash
+sudo ./quick-setup.sh
+```
+
+### Option 2: Interactive Setup
+Allows you to customize email during setup:
+```bash
+sudo ./run-playbook.sh
+```
+
+### Option 3: Custom Email Configuration
+1. **Edit the configuration file**:
    ```bash
-   # Edit nginx-setup.yml and change the email variable
-   nano nginx-setup.yml
-   # Change: email: "admin@amisgmbh.com" to your email
+   nano config.yml
+   # Change: default_email: "admin@amisgmbh.com" to your email
    ```
 
-3. **Run the setup script**:
+2. **Run quick setup**:
    ```bash
-   sudo ./run-playbook.sh
+   sudo ./quick-setup.sh
    ```
-
-4. **Follow the prompts** to enter your email for Let's Encrypt certificates
 
 ## Manual Execution
 
@@ -70,9 +79,22 @@ sudo apt install -y software-properties-common
 sudo add-apt-repository --yes --update ppa:ansible/ansible
 sudo apt install -y ansible
 
-# Run the playbook
-ansible-playbook nginx-setup.yml -i inventory.ini --extra-vars "email=your-email@example.com"
+# Run with default email
+ansible-playbook nginx-setup.yml -i inventory.ini
+
+# Run with custom email
+ansible-playbook nginx-setup.yml -i inventory.ini --extra-vars "email_address=your-email@example.com"
 ```
+
+## Configuration
+
+### Email Configuration
+The setup uses a default email (`admin@amisgmbh.com`) for Let's Encrypt certificates. You can:
+
+1. **Use default email**: Just run `sudo ./quick-setup.sh`
+2. **Change default email**: Edit `config.yml` file
+3. **Use custom email**: Run `sudo ./run-playbook.sh` and enter email when prompted
+4. **Set environment variable**: `EMAIL=your@email.com sudo ./quick-setup.sh`
 
 ## Configuration Details
 
