@@ -1,0 +1,148 @@
+---
+- name: Setup Nginx with SSL and Subdomain Configuration
+  hosts: localhost
+  become: yes
+  vars:
+    domain: "amisgmbh.com"
+    api_domain: "api.amisgmbh.com"
+    fe_port: 6062
+    be_port: 6061
+    email: "admin@amisgmbh.com"  # Change this to your email
+    
+  tasks:
+    - name: Update package cache (Ubuntu 20.04)
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required packages for Ubuntu 20.04
+      apt:
+        name:
+          - nginx
+          - certbot
+          - python3-certbot-nginx
+          - ufw
+          - curl
+        state: present
+        update_cache: yes
+
+    - name: Configure UFW firewall for HTTP and HTTPS
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - "80"
+        - "443"
+      notify: restart nginx
+
+    - name: Enable UFW firewall
+      ufw:
+        state: enabled
+        policy: deny
+        direction: incoming
+
+    - name: Start and enable nginx
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Create nginx configuration directory
+      file:
+        path: /etc/nginx/sites-available
+        state: directory
+        mode: '0755'
+
+    - name: Create nginx sites-enabled directory
+      file:
+        path: /etc/nginx/sites-enabled
+        state: directory
+        mode: '0755'
+
+    - name: Remove default nginx configuration
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Create main domain nginx configuration
+      template:
+        src: nginx-main.conf.j2
+        dest: /etc/nginx/sites-available/{{ domain }}
+        backup: yes
+      notify: restart nginx
+
+    - name: Create API subdomain nginx configuration
+      template:
+        src: nginx-api.conf.j2
+        dest: /etc/nginx/sites-available/{{ api_domain }}
+        backup: yes
+      notify: restart nginx
+
+    - name: Enable main domain site
+      file:
+        src: /etc/nginx/sites-available/{{ domain }}
+        dest: /etc/nginx/sites-enabled/{{ domain }}
+        state: link
+      notify: restart nginx
+
+    - name: Enable API subdomain site
+      file:
+        src: /etc/nginx/sites-available/{{ api_domain }}
+        dest: /etc/nginx/sites-enabled/{{ api_domain }}
+        state: link
+      notify: restart nginx
+
+    - name: Test nginx configuration
+      command: nginx -t
+      register: nginx_test
+      changed_when: false
+
+    - name: Restart nginx to apply initial configuration
+      systemd:
+        name: nginx
+        state: restarted
+
+    - name: Check if SSL certificate exists for main domain
+      stat:
+        path: /etc/letsencrypt/live/{{ domain }}/fullchain.pem
+      register: main_cert
+
+    - name: Check if SSL certificate exists for API domain
+      stat:
+        path: /etc/letsencrypt/live/{{ api_domain }}/fullchain.pem
+      register: api_cert
+
+    - name: Obtain SSL certificate for main domain
+      command: >
+        certbot --nginx -d {{ domain }} 
+        --non-interactive --agree-tos --email {{ email }}
+        --redirect
+      when: not main_cert.stat.exists
+      register: main_cert_result
+
+    - name: Obtain SSL certificate for API subdomain
+      command: >
+        certbot --nginx -d {{ api_domain }} 
+        --non-interactive --agree-tos --email {{ email }}
+        --redirect
+      when: not api_cert.stat.exists
+      register: api_cert_result
+
+    - name: Setup automatic certificate renewal
+      cron:
+        name: "Renew Let's Encrypt certificates"
+        minute: "0"
+        hour: "12"
+        job: "/usr/bin/certbot renew --quiet"
+
+    - name: Final nginx restart
+      systemd:
+        name: nginx
+        state: restarted
+
+  handlers:
+    - name: restart nginx
+      systemd:
+        name: nginx
+        state: restarted
