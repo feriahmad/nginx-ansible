@@ -1,12 +1,22 @@
 # Troubleshooting Guide - SSL Certificate Issue Fix
 
-## Issue Fixed
+## Issues Fixed
+
+### 1. SSL Certificate Loading Error
 The original playbook was failing with the error:
 ```
 nginx: [emerg] cannot load certificate "/etc/letsencrypt/live/amisgmbh.com/fullchain.pem": BIO_new_file() failed
 ```
 
 This happened because the nginx configuration templates were trying to load SSL certificates that didn't exist yet.
+
+### 2. CORS Error for API Access
+The frontend was unable to access the API due to CORS (Cross-Origin Resource Sharing) restrictions, showing errors like:
+```
+Access to fetch at 'api.amisgmbh.com' from origin 'amisgmbh.com' has been blocked by CORS policy
+```
+
+This happened because the API nginx configuration wasn't properly configured to allow cross-origin requests from the frontend domain.
 
 ## Solution Applied
 
@@ -27,6 +37,15 @@ This happened because the nginx configuration templates were trying to load SSL 
 - Added `ignore_errors: yes` for SSL certificate tasks
 - Added debug output to show SSL setup results
 - Graceful handling when domains don't point to server yet
+
+### 4. CORS Configuration Fix
+- **Before**: Limited CORS headers that didn't handle all scenarios
+- **After**: Comprehensive CORS configuration that allows:
+  - Both HTTP and HTTPS access from the main domain
+  - Access from localhost during development
+  - Subdomain access
+  - All necessary HTTP methods (GET, POST, PUT, DELETE, OPTIONS, PATCH)
+  - Proper preflight request handling
 
 ## Current Workflow
 
@@ -101,6 +120,14 @@ Certbot automatically modifies these files to add:
 - HTTP to HTTPS redirects
 - SSL security settings
 
+### CORS Configuration
+The API template includes comprehensive CORS settings that allow:
+- Access from `http://amisgmbh.com` and `https://amisgmbh.com`
+- Access from `http://localhost:6062` and `https://localhost:6062` (development)
+- Access from any subdomain of `amisgmbh.com`
+- All standard HTTP methods
+- Proper handling of preflight OPTIONS requests
+
 ## Common Issues and Solutions
 
 ### 1. Domain Not Resolving
@@ -135,6 +162,21 @@ curl http://localhost:6061  # Backend
 curl http://localhost:6062  # Frontend
 
 # Start your applications if needed
+```
+
+### 4. CORS Issues
+**Problem**: Frontend can't access API due to CORS errors
+**Solution**:
+```bash
+# Test CORS headers
+curl -H "Origin: https://amisgmbh.com" -H "Access-Control-Request-Method: GET" -H "Access-Control-Request-Headers: Content-Type" -X OPTIONS http://api.amisgmbh.com/
+
+# Check nginx configuration
+sudo nginx -t
+sudo systemctl reload nginx
+
+# Check nginx logs for CORS-related errors
+sudo tail -f /var/log/nginx/api.amisgmbh.com_error.log
 ```
 
 ### 4. SSL Certificate Renewal

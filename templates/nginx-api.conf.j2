@@ -8,23 +8,43 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
-    # CORS Headers for API (HTTP version)
-    add_header Access-Control-Allow-Origin "http://{{ domain }}" always;
-    add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
-    add_header Access-Control-Allow-Headers "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization" always;
-    add_header Access-Control-Expose-Headers "Content-Length,Content-Range" always;
-
-    # Handle preflight requests
+    # CORS configuration for API access
     location / {
+        # Set allowed origins
+        set $cors_origin "";
+        if ($http_origin = "http://{{ domain }}") {
+            set $cors_origin "http://{{ domain }}";
+        }
+        if ($http_origin = "https://{{ domain }}") {
+            set $cors_origin "https://{{ domain }}";
+        }
+        if ($http_origin = "http://localhost:{{ fe_port }}") {
+            set $cors_origin "http://localhost:{{ fe_port }}";
+        }
+        if ($http_origin = "https://localhost:{{ fe_port }}") {
+            set $cors_origin "https://localhost:{{ fe_port }}";
+        }
+        # Allow any subdomain of the main domain
+        if ($http_origin ~ "^https?://.*\.{{ domain }}$") {
+            set $cors_origin $http_origin;
+        }
+
+        # Handle CORS preflight requests
         if ($request_method = 'OPTIONS') {
-            add_header Access-Control-Allow-Origin "http://{{ domain }}";
-            add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS";
-            add_header Access-Control-Allow-Headers "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization";
+            add_header Access-Control-Allow-Origin $cors_origin;
+            add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS, PATCH';
+            add_header Access-Control-Allow-Headers 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,Accept,Origin,X-Forwarded-For';
             add_header Access-Control-Max-Age 1728000;
             add_header Content-Type 'text/plain; charset=utf-8';
             add_header Content-Length 0;
             return 204;
         }
+
+        # Add CORS headers for all requests
+        add_header Access-Control-Allow-Origin $cors_origin always;
+        add_header Access-Control-Allow-Methods 'GET, POST, PUT, DELETE, OPTIONS, PATCH' always;
+        add_header Access-Control-Allow-Headers 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,Accept,Origin,X-Forwarded-For' always;
+        add_header Access-Control-Expose-Headers 'Content-Length,Content-Range' always;
 
         # Proxy settings for backend API
         proxy_pass http://localhost:{{ be_port }};
